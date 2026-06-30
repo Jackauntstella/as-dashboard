@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aunt Stella · Financial Dashboard v1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root{
+    --ink:#0B0E14;--panel:#121724;--panel2:#171D2C;--panel3:#1E2536;
+    --line:#262D40;--line2:#323A52;--txt:#E8ECF3;--txt2:#9AA3B8;--txt3:#646D85;
+    --gold:#C9A24B;--blue:#5B9DFF;--green:#33C28A;--amber:#E3A93B;--red:#EB5A63;
+    --green-bg:rgba(51,194,138,.12);--amber-bg:rgba(227,169,59,.12);--red-bg:rgba(235,90,99,.12);--r:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--ink);color:var(--txt);font-family:"IBM Plex Sans","Noto Sans TC",sans-serif;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum";padding:0 0 60px}
+  .num{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+  .zh{font-family:"Noto Sans TC",sans-serif}
+  .wrap{max-width:1320px;margin:0 auto;padding:0 28px}
+  .topbar{border-top:2px solid var(--gold);background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+  .topbar .wrap{display:flex;align-items:center;gap:18px;padding:14px 28px}
+  .brand{font-family:"Schibsted Grotesk",sans-serif;font-weight:600;font-size:17px;letter-spacing:.3px}
+  .brand .zh{color:var(--gold);font-weight:500;margin-left:6px;font-size:14px}
+  .tabs{display:flex;gap:4px;margin-left:18px}
+  .tab{background:transparent;border:1px solid transparent;color:var(--txt3);font-family:inherit;font-size:13px;padding:7px 16px;border-radius:8px;cursor:pointer;transition:.15s}
+  .tab .zh{font-size:12px;margin-left:4px}
+  .tab:hover{color:var(--txt2)}
+  .tab.on{background:var(--panel3);color:var(--txt);border-color:var(--line2)}
+  .meta{margin-left:auto;display:flex;gap:16px;font-size:12px;color:var(--txt3);align-items:center}
+  .meta b{color:var(--txt);font-weight:500}
+  .live{display:inline-flex;align-items:center;gap:6px}
+  .dot-live{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px var(--green-bg)}
+  .view{display:none;padding-top:22px}
+  .view.on{display:block}
+  .banner{display:flex;align-items:center;gap:10px;background:var(--amber-bg);border:1px solid rgba(227,169,59,.3);border-radius:var(--r);padding:11px 16px;font-size:12.5px;color:var(--amber);margin-bottom:18px}
+  .banner i{font-style:normal}
+  .hero{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:18px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;position:relative;overflow:hidden}
+  .kpi .lab{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--txt3);font-weight:500}
+  .kpi .lab .zh{letter-spacing:0;text-transform:none;margin-left:5px}
+  .kpi .big{font-family:"IBM Plex Mono",monospace;font-size:26px;font-weight:600;margin-top:9px;letter-spacing:-.5px}
+  .kpi .deltas{display:flex;gap:16px;margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+  .dl{font-size:11px;color:var(--txt3)}
+  .dl .v{font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:600;display:block;margin-top:3px}
+  .up{color:var(--green)}.down{color:var(--red)}.flat{color:var(--txt2)}
+  .kpi .edge{position:absolute;left:0;top:0;bottom:0;width:3px}
+  .grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:18px;margin-bottom:18px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:17px 19px;margin-bottom:18px}
+  .phead{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+  .phead h3{font-family:"Schibsted Grotesk",sans-serif;font-size:14px;font-weight:500}
+  .phead h3 .zh{color:var(--txt2);font-weight:400;margin-left:6px;font-size:12px}
+  .legend{display:flex;gap:14px;font-size:11px;color:var(--txt2);flex-wrap:wrap}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .lk{width:14px;height:3px;border-radius:2px}
+  .caveat{font-size:11.5px;color:var(--amber);background:var(--amber-bg);border-left:2px solid var(--amber);padding:9px 13px;border-radius:0 6px 6px 0;margin-bottom:14px;line-height:1.6}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{text-align:right;padding:11px 12px;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--txt3);font-weight:500;background:var(--panel2);border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer}
+  thead th:first-child{text-align:left}
+  thead th .zh{letter-spacing:0;text-transform:none}
+  .grouprow td{background:var(--ink);padding:8px 12px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);font-weight:600;border-bottom:1px solid var(--line)}
+  .grouprow .zh{letter-spacing:0;text-transform:none;color:var(--txt2);margin-left:6px}
+  tbody td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  tbody tr:hover td{background:var(--panel2)}
+  td.store{text-align:left}
+  .code{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:12px}
+  .sname{color:var(--txt3);font-size:11px;margin-left:8px}
+  .en{color:var(--txt2);font-size:11.5px;margin-left:8px}
+  .pct{font-family:"IBM Plex Mono",monospace;font-weight:500}
+  .grand td{background:var(--panel3);font-weight:600;border-top:1px solid var(--gold);font-size:13.5px}
+  .grand .store{color:var(--gold);font-family:"Schibsted Grotesk",sans-serif}
+  .pairwrap{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .pair{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
+  .pair h4{font-size:12px;color:var(--txt2);font-weight:500;margin-bottom:4px}
+  .pair .note{font-size:11px;color:var(--txt3);margin-bottom:13px;line-height:1.5}
+  .pairrow{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+  .pairrow .l{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:13px}
+  .pairrow .l .t{font-family:"Noto Sans TC",sans-serif;color:var(--txt3);font-weight:400;font-size:11px;margin-left:7px}
+  .pairrow .r{display:flex;gap:18px;align-items:baseline}
+  .pairrow .r .v{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500}
+  .pairrow .r small{color:var(--txt3);font-size:10px;display:block;text-align:right}
+  .comprow{display:grid;grid-template-columns:140px 1fr 70px 64px;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+  .comprow .cat{color:var(--txt2)}.comprow .cat .zh{color:var(--txt3);font-size:11px;display:block}
+  .bar{height:22px;background:var(--panel3);border-radius:4px;position:relative;overflow:hidden}
+  .bar .fill{height:100%;border-radius:4px}
+  .bar .lbl{position:absolute;right:7px;top:50%;transform:translateY(-50%);font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--txt)}
+  .shift{font-family:"IBM Plex Mono",monospace;font-size:12px;text-align:right;font-weight:500}
+  .yoybadge{font-family:"IBM Plex Mono",monospace;font-size:11px;text-align:right}
+  .alertbox{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:8px 0}
+  .alert{display:flex;align-items:center;gap:11px;padding:10px 18px;border-bottom:1px solid var(--line);font-size:12.5px}
+  .alert:last-child{border-bottom:0}
+  .adot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .placeholder{border:1px dashed var(--line2);border-radius:var(--r);padding:26px;text-align:center;color:var(--txt3);font-size:12.5px;line-height:1.7}
+  .foot{margin-top:22px;font-size:11px;color:var(--txt3);line-height:1.7}
+  .badge{display:inline-block;background:var(--green-bg);color:var(--green);font-size:10px;padding:2px 9px;border-radius:5px;font-weight:500;letter-spacing:.4px}
+  .badge.amber{background:var(--amber-bg);color:var(--amber)}
+  @media(max-width:1000px){.hero{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.pairwrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="wrap">
+  <div class="brand">Aunt Stella<span class="zh">詩特莉</span></div>
+  <div class="tabs">
+    <button class="tab" data-v="daily">Daily<span class="zh">每日</span></button>
+    <button class="tab" data-v="weekly">Weekly<span class="zh">每週</span></button>
+    <button class="tab on" data-v="monthly">Monthly<span class="zh">每月</span></button>
+  </div>
+  <div class="meta">
+    <span>Data <span class="zh">資料</span> <b class="num" id="meta-date">2026-05</b></span>
+    <span class="live"><span class="dot-live"></span>Real data <span class="zh">真實數據</span></span>
+  </div>
+</div></div>
+
+<div class="wrap">
+
+  <!-- ================= MONTHLY ================= -->
+  <section class="view on" id="monthly">
+    <div class="hero" id="m-hero"></div>
+
+    <div class="grid2">
+      <div class="panel">
+        <div class="phead"><h3>Company revenue trend <span class="zh">公司營收趨勢</span></h3>
+          <div class="legend">
+            <span><span class="lk" style="background:var(--gold)"></span>2026</span>
+            <span><span class="lk" style="background:var(--txt3)"></span>2025</span>
+          </div></div>
+        <div style="position:relative;height:230px"><canvas id="m-trend" role="img" aria-label="Company monthly revenue 2026 versus 2025"></canvas></div>
+      </div>
+      <div class="panel" style="margin-bottom:0">
+        <div class="phead"><h3>CNY-adjusted YoY <span class="zh">農曆校正年比</span></h3></div>
+        <div id="m-cny"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="phead"><h3>Channel &amp; store P&amp;L <span class="zh">通路／門市損益 · YTD 2026</span></h3>
+        <span class="badge amber">Book cost <span class="zh">帳面成本</span></span></div>
+      <div class="caveat">⚠ Margins are <b>book figures</b>, not restated to true factory cost. Actual cost runs ~<b>4.9pp</b> higher, so real GM is below the table; <b>BD / Costco / Showroom</b> are most affected and far less profitable at true cost. For structural comparison only — not a true-profit conclusion.<br><span class="zh" style="color:var(--txt3)">毛利為帳面數字，未還原工廠真實成本（實際約高 4.9pp）；BD／Costco／Showroom 真實獲利明顯低於帳面，此表供結構比較非獲利定論。</span></div>
+      <table id="m-pnl"><thead><tr>
+        <th class="zh">通路 / 門市</th>
+        <th>May rev <span class="zh">5月營收</span></th>
+        <th>YTD rev <span class="zh">年累計</span></th>
+        <th>YoY <span class="zh">年增</span></th>
+        <th>COGS</th>
+        <th>GM% <span class="zh">毛利率</span></th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+
+    <div class="panel">
+      <div class="phead"><h3>Trade-off pairs <span class="zh">配對門市 · 不可獨立評估</span></h3></div>
+      <div class="pairwrap" id="m-pairs"></div>
+    </div>
+
+    <div class="foot">
+      <span class="badge">Real data <span class="zh">真實數據</span></span> Source: <b class="num" style="font-family:inherit">master_pnl_2020_2026.csv</b> (through 2026-05). YoY = YTD 2026 vs 2025 same period; GM% = YTD book value. Trade-off pairs (KS↔ZX, TMMK↔NH) are bundled location costs — evaluate together.<br>
+      <span class="zh" style="color:var(--txt3)">來源 master_pnl（到 2026-05）；YoY 為 YTD 同期，毛利率為 YTD 帳面值；配對門市為換取對方點位的綁定成本，須一起評估。</span>
+    </div>
+  </section>
+
+  <!-- ================= WEEKLY ================= -->
+  <section class="view" id="weekly">
+    <div class="banner"><i>◐</i><span>Snapshot week-ending <b class="num" style="font-family:'IBM Plex Mono'">2026-06-21</b> · accumulated-to-week, for in-month progress &amp; mix monitoring only — use monthly master for any month-to-month comparison. <span class="zh" style="color:var(--txt3)">週檔為累計至當週快照，僅供週內進度監控；月對月比較一律以月 master 為準。</span></span></div>
+
+    <div class="hero" id="w-hero"></div>
+
+    <div class="panel">
+      <div class="phead"><h3>Sales composition <span class="zh">銷售組成 · 本年累計至當週</span></h3>
+        <div class="legend"><span>This year <span class="zh">本年佔比</span></span><span style="color:var(--txt3)">｜ LY same period <span class="zh">去年同期</span></span><span>｜YoY</span></div></div>
+      <div id="w-comp"></div>
+    </div>
+
+    <div class="grid2" style="grid-template-columns:1fr 1fr">
+      <div class="panel" style="margin-bottom:0">
+        <div class="phead"><h3>Composition shift alerts <span class="zh">組成異動警示</span></h3></div>
+        <div class="alertbox" id="w-alerts"></div>
+      </div>
+      <div class="panel" style="margin-bottom:0">
+        <div class="phead"><h3>Top / bottom movers <span class="zh">漲跌最大單位 · 全通路 · 6月MTD YoY</span></h3></div>
+        <div id="w-movers"></div>
+        <div style="font-size:10.5px;color:var(--txt3);padding:8px 4px 0;line-height:1.55">Note: June includes Dragon-Boat gifting, so YoY runs high across the board — read relative ranking. <b style="color:var(--amber)">Costco / BD ship in batches</b>, so single-month MTD YoY is timing-sensitive (Costco YTD ≈ −30%; June's deeper drop partly reflects a large prior-year order timing gap). <span class="zh">6月含端午檔期整體 YoY 偏高，請看相對高低；通路訂單批次性強，MTD YoY 易受出貨時點影響。</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="phead"><h3>Café F&amp;B performance <span class="zh">咖啡店餐飲 · ZX / BR4 / TAK / HCBC · 6月MTD</span></h3>
+        <span class="badge">Real data <span class="zh">真實數據</span></span></div>
+      <div id="w-cafe"></div>
+      <div style="font-size:11px;color:var(--txt3);margin-top:12px;line-height:1.6">Company F&amp;B YTD <b class="num" style="font-family:'IBM Plex Mono';color:var(--txt2)">NT$11.90M</b>, YoY <b style="color:var(--green)">+45.8%</b>, mix 6.1% (LY 4.9%) — F&amp;B share keeps rising. <span class="zh">公司層餐飲累計 11.90M、YoY +45.8%、佔比 6.1%（去年 4.9%），餐飲佔比持續提升。</span></div>
+    </div>
+
+    <div class="foot"><span class="badge">Real data <span class="zh">真實數據</span></span> Source: <b class="num" style="font-family:inherit">kouseihi_company_weekly.csv</b>, <b class="num" style="font-family:inherit">kouseihi_stores_weekly.csv</b>. Movers &amp; café F&amp;B are June MTD (through 06-21 snapshot). <span class="zh" style="color:var(--txt3)">來源週檔；movers 與 café 為 6 月 MTD（截至 06-21 快照）。</span></div>
+  </section>
+
+  <!-- ================= DAILY ================= -->
+  <section class="view" id="daily">
+    <div class="banner" style="background:var(--green-bg);border-color:rgba(51,194,138,.3);color:var(--green)"><i>●</i><span>Real data · business date <b class="num" style="font-family:'IBM Plex Mono'">2026-06-28 (Sun)</b> · counter sales only (excl. transfers). Channels book in batches, so a daily 0 is normal — read MTD. <span class="zh" style="color:var(--txt3)">純專櫃銷售（不含調撥）；通路按批次入帳，當日 0 屬正常，看 MTD。</span></span></div>
+    <div class="hero" id="d-hero"></div>
+    <div class="panel">
+      <div class="phead"><h3>14-day trend <span class="zh">近 14 個營業日趨勢</span></h3>
+        <div class="legend">
+          <span><span class="lk" style="background:var(--gold)"></span>Actual 實際</span>
+          <span><span class="lk" style="background:var(--txt3)"></span>Budget 預算</span>
+          <span><span class="lk" style="background:var(--blue)"></span>LY 去年</span>
+        </div></div>
+      <div style="position:relative;height:230px"><canvas id="d-trend" role="img" aria-label="14 business day company sales trend"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="phead"><h3>Units <span class="zh">各營業單位 · 本日 / MTD</span></h3>
+        <span class="badge">Real data <span class="zh">真實數據</span></span></div>
+      <table id="d-tbl"><thead><tr>
+        <th class="zh">單位</th><th class="zh">本日營收</th><th class="zh">日達成</th><th class="zh">日YoY</th>
+        <th class="zh">MTD</th><th class="zh">MTD達成</th><th style="text-align:center">●</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+    <div class="foot"><span class="badge">Real data <span class="zh">真實數據</span></span> Source: <b class="num" style="font-family:inherit">sokuho_recent.csv</b> (2025-01-01 – 2026-06-28). Revenue = counter sales, excl. transfers. Status by daily budget achievement: <span style="color:var(--green)">●</span>≥100% <span style="color:var(--amber)">●</span>85–99% <span style="color:var(--red)">●</span>&lt;85%; channels (batch-booked) shown grey. Jan–Feb YoY is affected by the Lunar New Year shift — read combined.<br><span class="zh" style="color:var(--txt3)">來源 sokuho_recent；營收為純專櫃不含調撥；燈號依日預算達成率；通路批次入帳以灰點表示；1～2 月 YoY 受春節位移影響需合併判讀。</span></div>
+  </section>
+
+</div>
+
+<script>
+const M={"month":"2026-05","rows":[{"store":"Showroom","code":"Showroom","dept":"channel","rev":2530142,"cogs":1021521,"gp":1508621,"gm":59.6,"ytd26":28376747,"ytd25":29987880,"ytdGM":58.2,"yoy":-5.4},{"store":"Zhong-Xiao Sogo","code":"ZX","dept":"store","rev":2143811,"cogs":677192,"gp":1466619,"gm":68.4,"ytd26":13317612,"ytd25":9485965,"ytdGM":68.4,"yoy":40.4},{"store":"Costco","code":"Costco","dept":"channel","rev":1600945,"cogs":692030,"gp":908915,"gm":56.8,"ytd26":13971812,"ytd25":20132135,"ytdGM":59.0,"yoy":-30.6},{"store":"BR4 Fuxing SOGO","code":"BR4","dept":"store","rev":1527498,"cogs":498938,"gp":1028560,"gm":67.3,"ytd26":9771023,"ytd25":8634276,"ytdGM":68.7,"yoy":13.2},{"store":"Nan-Shi Mitsukoshi","code":"NH","dept":"store","rev":1015472,"cogs":276565,"gp":738907,"gm":72.8,"ytd26":8043607,"ytd25":8984264,"ytdGM":72.5,"yoy":-10.5},{"store":"Takashimaya","code":"TAK","dept":"store","rev":939822,"cogs":315020,"gp":624802,"gm":66.5,"ytd26":5544027,"ytd25":4015403,"ytdGM":67.7,"yoy":38.1},{"store":"Dome Hanshin","code":"DOME","dept":"store","rev":907287,"cogs":219184,"gp":688103,"gm":75.8,"ytd26":7632939,"ytd25":7466317,"ytdGM":74.7,"yoy":2.2},{"store":"A4 Mitsukoshi","code":"A4","dept":"store","rev":834232,"cogs":205776,"gp":628456,"gm":75.3,"ytd26":9593749,"ytd25":7472087,"ytdGM":70.9,"yoy":28.4},{"store":"Breeze Nanjing","code":"BN","dept":"store","rev":616804,"cogs":150836,"gp":465968,"gm":75.5,"ytd26":4577782,"ytd25":4389177,"ytdGM":75.3,"yoy":4.3},{"store":"Ban-Ciao Far Eastern","code":"BCFE","dept":"store","rev":610496,"cogs":165300,"gp":445196,"gm":72.9,"ytd26":5746820,"ytd25":5207293,"ytdGM":72.9,"yoy":10.4},{"store":"Hsin-Chu Big City","code":"HCBC","dept":"store","rev":596275,"cogs":141353,"gp":454922,"gm":76.3,"ytd26":4363466,"ytd25":2758386,"ytdGM":68.4,"yoy":58.2},{"store":"Tainan Mitsukoshi","code":"TN","dept":"store","rev":564187,"cogs":205471,"gp":358716,"gm":63.6,"ytd26":5046204,"ytd25":4403684,"ytdGM":71.4,"yoy":14.6},{"store":"Tian-Mu Sogo","code":"TM","dept":"store","rev":549862,"cogs":123153,"gp":426709,"gm":77.6,"ytd26":4555421,"ytd25":4376517,"ytdGM":75.4,"yoy":4.1},{"store":"Webshop","code":"Webshop","dept":"channel","rev":492376,"cogs":131921,"gp":360455,"gm":73.2,"ytd26":11777528,"ytd25":9427663,"ytdGM":70.8,"yoy":24.9},{"store":"Anhe store","code":"Anhe","dept":"store","rev":445671,"cogs":154169,"gp":291502,"gm":65.4,"ytd26":4045957,"ytd25":4113475,"ytdGM":66.5,"yoy":-1.6},{"store":"Taichung Mitsukoshi","code":"TC","dept":"store","rev":438764,"cogs":71872,"gp":366892,"gm":83.6,"ytd26":4723471,"ytd25":2706578,"ytdGM":72.1,"yoy":74.5},{"store":"Hanshin Kaohsiung","code":"HS","dept":"store","rev":354932,"cogs":96422,"gp":258510,"gm":72.8,"ytd26":2859991,"ytd25":2773564,"ytdGM":70.9,"yoy":3.1},{"store":"CL SOGO B1","code":"CL","dept":"store","rev":332505,"cogs":90039,"gp":242466,"gm":72.9,"ytd26":3604231,"ytd25":3223180,"ytdGM":75.1,"yoy":11.8},{"store":"Taichung Far Eastern","code":"TCFE","dept":"store","rev":323902,"cogs":79899,"gp":244003,"gm":75.3,"ytd26":2959922,"ytd25":3416835,"ytdGM":72.5,"yoy":-13.4},{"store":"Tian-Mu Mitsukoshi","code":"TMMK","dept":"store","rev":190924,"cogs":43560,"gp":147364,"gm":77.2,"ytd26":1251416,"ytd25":939672,"ytdGM":73.9,"yoy":33.2},{"store":"Kaohsiung Sogo","code":"KS","dept":"store","rev":189185,"cogs":54586,"gp":134599,"gm":71.1,"ytd26":1114501,"ytd25":1258018,"ytdGM":66.7,"yoy":-11.4},{"store":"China Airlines","code":"CI","dept":"channel","rev":139200,"cogs":50297,"gp":88903,"gm":63.9,"ytd26":278400,"ytd25":0,"ytdGM":64.3,"yoy":null},{"store":"Business Development","code":"BD","dept":"channel","rev":81903,"cogs":19452,"gp":62451,"gm":76.2,"ytd26":19784034,"ytd25":0,"ytdGM":51.3,"yoy":null}],"trend":{"m":[1,2,3,4,5,6,7,8,9,10,11,12],"r25":[64386505,16294045,13469575,27343405,32480925,19192999,23031192,31461676,76209429,27623740,27933635,39937628],"r26":[56859029,65881479,16392128,18555568,17489382,0,0,0,0,0,0,0]},"cny":{"jf26":122740508,"jf25":80680550,"jfYoY":52.1,"feb26":65881479,"feb25":16294045,"febNaiveYoY":304.3},"pairs":{"KS_ZX":{"KS":{"rev":1114501,"gp":743803,"gm":66.7,"yoy":-11.4},"ZX":{"rev":13317612,"gp":9109816,"gm":68.4,"yoy":40.4}},"TMMK_NH":{"TMMK":{"rev":1251416,"gp":925353,"gm":73.9,"yoy":33.2},"NH":{"rev":8043607,"gp":5833855,"gm":72.5,"yoy":-10.5}}},"totals":{"rev":17489382,"cogs":4174902,"gp":14171721,"gm":81.0,"ytd26":175177586,"ytd25":153974455,"ytdYoY":13.8,"ytdGM":70.8}};
+const WCOMP=[{"cat":"GIFT_5000_UP","zh":"禮盒 5000↑","sales":117872415,"yoy":124.8,"cur":60.5,"prev":56.6},{"cat":"GIFT_900_DOWN","zh":"禮盒 900↓","sales":22764809,"yoy":85.5,"cur":11.7,"prev":16.0},{"cat":"GIFT_900_UP","zh":"禮盒 900↑","sales":21955663,"yoy":108.9,"cur":11.3,"prev":12.1},{"cat":"GRAM_COOKIES","zh":"秤重餅乾","sales":16146977,"yoy":106.9,"cur":8.3,"prev":9.0},{"cat":"FB","zh":"餐飲 F&B","sales":11897260,"yoy":145.8,"cur":6.1,"prev":4.9},{"cat":"DRY_CAKE","zh":"乾蛋糕","sales":2379740,"yoy":156.9,"cur":1.2,"prev":0.9},{"cat":"OTHER","zh":"其他","sales":1743225,"yoy":193.8,"cur":0.9,"prev":0.5}];
+const W={"total":194760089,"yoy":116.7,"prevSnap":180280634,"prevSnapYoY":114.9,"we":"2026-06-21","wePrev":"2026-06-07"};
+const WMOV={"top":[{"code":"Showroom","zh":"展售","yoy":325.2,"rev":3289743},{"code":"Webshop","zh":"網路商店","yoy":167.9,"rev":1476706},{"code":"Anhe","zh":"安和","yoy":152.6,"rev":536870},{"code":"BCFE","zh":"板橋遠百","yoy":107.6,"rev":539239},{"code":"TAK","zh":"大葉高島屋","yoy":106.5,"rev":798548}],"bottom":[{"code":"Costco","zh":"好市多","yoy":-74.1,"rev":1101660},{"code":"TCFE","zh":"台中遠百","yoy":-0.7,"rev":360487},{"code":"KS","zh":"高雄SOGO","yoy":6.2,"rev":107126},{"code":"A4","zh":"信義三越","yoy":25.3,"rev":719871},{"code":"ZX","zh":"忠孝SOGO","yoy":33.8,"rev":1508016}]};
+const WCAFE=[{"code":"ZX","zh":"忠孝SOGO","fb":653451,"yoy":21.3,"comp":43.3,"tot":1508016},{"code":"BR4","zh":"復興SOGO","fb":484838,"yoy":24.4,"comp":33.0,"tot":1467268},{"code":"TAK","zh":"大葉高島屋","fb":334836,"yoy":319.9,"comp":41.9,"tot":798548},{"code":"HCBC","zh":"新竹大遠百","fb":108133,"yoy":null,"comp":15.4,"tot":702981}];
+const DD={"date":"2026-06-28","rows":[{"code":"A4","zh":"信義三越","area":"Taipei","sales":26844,"budpct":94.8,"yoy":57.0,"mtd":838318,"mtdbud":90.2},{"code":"BCFE","zh":"板橋遠百","area":"Taipei","sales":21570,"budpct":88.4,"yoy":11.3,"mtd":687629,"mtdbud":119.7},{"code":"BR4","zh":"復興SOGO","area":"Taipei","sales":65651,"budpct":124.3,"yoy":57.0,"mtd":1892769,"mtdbud":150.4},{"code":"NH","zh":"南西新光","area":"Taipei","sales":50201,"budpct":117.9,"yoy":57.1,"mtd":1213056,"mtdbud":102.0},{"code":"TAK","zh":"大葉高島屋","area":"Taipei","sales":42268,"budpct":178.2,"yoy":29.1,"mtd":1007780,"mtdbud":172.7},{"code":"TM","zh":"天母SOGO","area":"Taipei","sales":73102,"budpct":563.0,"yoy":62.4,"mtd":684119,"mtdbud":118.7},{"code":"ZX","zh":"忠孝SOGO","area":"Taipei","sales":67755,"budpct":76.2,"yoy":3.1,"mtd":2014436,"mtdbud":99.3},{"code":"BN","zh":"南京微風","area":"Taipei","sales":8860,"budpct":42.1,"yoy":-41.1,"mtd":680676,"mtdbud":102.7},{"code":"TMMK","zh":"天母三越","area":"Taipei","sales":4472,"budpct":229.4,"yoy":-8.2,"mtd":134140,"mtdbud":101.0},{"code":"CL","zh":"中壢SOGO","area":"NonTaipei","sales":14627,"budpct":45.6,"yoy":-29.7,"mtd":489131,"mtdbud":92.7},{"code":"DOME","zh":"漢神巨蛋","area":"NonTaipei","sales":20135,"budpct":46.6,"yoy":-49.6,"mtd":845973,"mtdbud":103.0},{"code":"HCBC","zh":"新竹大遠百","area":"NonTaipei","sales":22953,"budpct":82.2,"yoy":-18.9,"mtd":839697,"mtdbud":126.1},{"code":"HS","zh":"高雄漢神","area":"NonTaipei","sales":10866,"budpct":67.7,"yoy":93.0,"mtd":278699,"mtdbud":65.4},{"code":"TC","zh":"台中三越","area":"NonTaipei","sales":23677,"budpct":55.1,"yoy":null,"mtd":532075,"mtdbud":76.7},{"code":"TCFE","zh":"台中遠百","area":"NonTaipei","sales":11047,"budpct":82.4,"yoy":-40.7,"mtd":446686,"mtdbud":103.3},{"code":"KS","zh":"高雄SOGO","area":"NonTaipei","sales":4456,"budpct":71.9,"yoy":-37.3,"mtd":131828,"mtdbud":76.1},{"code":"TN","zh":"台南三越","area":"NonTaipei","sales":22733,"budpct":80.2,"yoy":15.0,"mtd":584629,"mtdbud":90.1},{"code":"Costco","zh":"好市多","area":"Channel","sales":0,"budpct":0.0,"yoy":null,"mtd":4255740,"mtdbud":141.4},{"code":"Anhe","zh":"安和","area":"Taipei","sales":8192,"budpct":82.3,"yoy":53.7,"mtd":643928,"mtdbud":137.5},{"code":"WEB","zh":"網路商店","area":"Channel","sales":0,"budpct":0.0,"yoy":null,"mtd":1510032,"mtdbud":169.1},{"code":"SR","zh":"展售","area":"Channel","sales":6448,"budpct":6.7,"yoy":-84.2,"mtd":3354050,"mtdbud":125.0},{"code":"China Air","zh":"中華航空","area":"Channel","sales":0,"budpct":0.0,"yoy":null,"mtd":139200,"mtdbud":100.0},{"code":"DF","zh":"免稅","area":"Channel","sales":0,"budpct":0.0,"yoy":null,"mtd":552668,"mtdbud":136.9},{"code":"THSR","zh":"高鐵","area":"Channel","sales":0,"budpct":0.0,"yoy":null,"mtd":705510,"mtdbud":131.4},{"code":"BD","zh":"企業業務","area":"Channel","sales":0,"budpct":0.0,"yoy":null,"mtd":1135499,"mtdbud":608.3}],"company":{"sales":505857,"budpct":77.7,"yoy":2.0,"mtd":25598268,"mtdbud":124.0,"mtdyoy":43.6},"trend":{"d":["06-10","06-11","06-12","06-13","06-14","06-15","06-16","06-17","06-23","06-24","06-25","06-26","06-27","06-28"],"sales":[776945,834958,2854294,848156,815329,2943184,946094,953597,3537356,504788,437389,415510,479325,505857],"bud":[563821,581042,555343,604961,708181,1720154,476022,684171,1516291,737132,657926,599582,571509,651206],"ly":[472709,1872103,408942,502849,508310,329359,302547,391911,367007,1349701,447228,413278,1335911,495841]}};
+const fmt=n=>new Intl.NumberFormat('en-US').format(Math.round(n));
+const M2=n=>(n/1e6).toFixed(2)+'M';
+const sign=v=>v==null?'—':(v>=0?'+':'')+v.toFixed(1)+'%';
+const cls=v=>v==null?'flat':v>0?'up':v<0?'down':'flat';
+const edge=v=>v==null?'var(--txt3)':v>=0?'var(--green)':'var(--red)';
+
+const NAME={ZX:['Zhong-Xiao Sogo','忠孝SOGO'],NH:['Nan-Shi Mitsukoshi','南西新光'],A4:['A4 Mitsukoshi','信義三越'],'BR4':['BR4 Fuxing SOGO','復興SOGO'],BCFE:['Ban-Ciao Far Eastern','板橋遠百'],TAK:['Takashimaya','大葉高島屋'],TM:['Tian-Mu Sogo','天母SOGO'],TMMK:['Tian-Mu Mitsukoshi','天母三越'],BN:['Breeze Nanjing','南京微風'],Anhe:['Anhe Store','安和'],CL:['CL SOGO B1','中壢SOGO'],DOME:['Dome Hanshin','漢神巨蛋'],HCBC:['Hsin-Chu Big City','新竹大遠百'],HS:['Hanshin Kaohsiung','高雄漢神'],TC:['Taichung Mitsukoshi','台中三越'],TCFE:['Taichung Far Eastern','台中遠百'],KS:['Kaohsiung Sogo','高雄SOGO'],TN:['Tainan Mitsukoshi','台南三越'],Showroom:['Showroom','展售'],SR:['Showroom','展售'],Webshop:['Webshop','網路商店'],WEB:['Webshop','網路商店'],Costco:['Costco','好市多'],BD:['Business Development','企業業務'],CI:['China Airlines','中華航空'],'China Air':['China Airlines','中華航空'],DF:['Duty Free','免稅'],THSR:['Taiwan High Speed Rail','高鐵']};
+function unit(code){const n=NAME[code]||[code,''];return `<span class="code">${code}</span><span class="en">${n[0]}</span><span class="sname zh">${n[1]}</span>`;}
+
+/* ---------- MONTHLY ---------- */
+const T=M.totals;
+document.getElementById('m-hero').innerHTML=`
+ <div class="kpi"><div class="edge" style="background:var(--gold)"></div>
+   <div class="lab">May revenue<span class="zh">5月營收</span></div>
+   <div class="big">NT$ ${fmt(T.rev)}</div>
+   <div class="deltas"><div class="dl">Gross profit<span class="v flat">${M2(T.gp)}</span></div>
+   <div class="dl">GM% (month)<span class="v flat">${T.gm}%</span></div></div></div>
+ <div class="kpi"><div class="edge" style="background:${edge(T.ytdYoY)}"></div>
+   <div class="lab">YTD revenue<span class="zh">年累計</span></div>
+   <div class="big">NT$ ${fmt(T.ytd26)}</div>
+   <div class="deltas"><div class="dl">YoY<span class="v ${cls(T.ytdYoY)}">${sign(T.ytdYoY)}</span></div>
+   <div class="dl">LY YTD<span class="v flat">${M2(T.ytd25)}</span></div></div></div>
+ <div class="kpi"><div class="edge" style="background:var(--amber)"></div>
+   <div class="lab">YTD GM%<span class="zh">毛利率·帳面</span></div>
+   <div class="big">${T.ytdGM}%</div>
+   <div class="deltas"><div class="dl" style="color:var(--amber)">True ~${(T.ytdGM-4.9).toFixed(1)}% (−4.9pp) <span class="zh">還原後</span></div></div></div>
+ <div class="kpi"><div class="edge" style="background:var(--blue)"></div>
+   <div class="lab">Units<span class="zh">營業單位</span></div>
+   <div class="big">${M.rows.length}</div>
+   <div class="deltas"><div class="dl">Stores<span class="v flat">${M.rows.filter(r=>r.dept==='store').length}</span></div>
+   <div class="dl">Channels<span class="v flat">${M.rows.filter(r=>r.dept==='channel').length}</span></div></div></div>`;
+
+const cny=M.cny;
+document.getElementById('m-cny').innerHTML=`
+ <div style="padding:11px 0;border-bottom:1px solid var(--line)">
+   <div style="font-size:11px;color:var(--txt3)">Feb-only YoY (unadjusted) <span class="zh">2月單月·未校正</span></div>
+   <div style="font-family:'IBM Plex Mono';font-size:22px;font-weight:600;color:var(--red);margin-top:4px">+${cny.febNaiveYoY}% <span style="font-size:11px;color:var(--amber)">⚠ CNY artefact <span class="zh">農曆假象</span></span></div>
+ </div>
+ <div style="padding:11px 0">
+   <div style="font-size:11px;color:var(--txt3)">Jan+Feb combined YoY (adjusted) <span class="zh">合併·校正後</span></div>
+   <div style="font-family:'IBM Plex Mono';font-size:22px;font-weight:600;color:var(--green);margin-top:4px">+${cny.jfYoY}% <span style="font-size:11px;color:var(--txt2)">✓ true read <span class="zh">真實對比</span></span></div>
+   <div style="font-size:11px;color:var(--txt3);margin-top:6px" class="num">${M2(cny.jf26)} vs ${M2(cny.jf25)} (LY)</div>
+ </div>
+ <div style="font-size:11px;color:var(--txt3);line-height:1.6;margin-top:6px">Lunar New Year shifts each year — Jan+Feb must be combined for a valid YoY. <span class="zh">農曆春節落點每年不同，1+2 月須合併才是有效年比。</span></div>`;
+
+const tb=document.querySelector('#m-pnl tbody');
+function pnlGroup(dept,label,zh){
+  const set=M.rows.filter(r=>r.dept===dept).sort((a,b)=>b.ytd26-a.ytd26);
+  tb.insertAdjacentHTML('beforeend',`<tr class="grouprow"><td colspan="6">${label} <span class="zh">${zh}</span></td></tr>`);
+  set.forEach(r=>{
+    tb.insertAdjacentHTML('beforeend',`<tr>
+      <td class="store">${unit(r.code)}</td><td class="num" style="color:var(--txt2)">${fmt(r.rev)}</td>
+      <td class="num">${M2(r.ytd26)}</td>
+      <td class="pct ${cls(r.yoy)}">${sign(r.yoy)}</td>
+      <td class="num" style="color:var(--txt3)">${M2(r.ytd26*(100-r.ytdGM)/100)}</td>
+      <td class="pct" style="color:var(--txt)">${r.ytdGM}%</td></tr>`);
+  });
+}
+pnlGroup('store','Retail stores','零售門市');
+pnlGroup('channel','Non-store channels','非店通路');
+tb.insertAdjacentHTML('beforeend',`<tr class="grand">
+  <td class="store">COMPANY 全公司</td>
+  <td class="num">${fmt(T.rev)}</td><td class="num">${M2(T.ytd26)}</td>
+  <td class="pct ${cls(T.ytdYoY)}">${sign(T.ytdYoY)}</td>
+  <td class="num">${M2(T.ytd26*(100-T.ytdGM)/100)}</td>
+  <td class="pct">${T.ytdGM}%</td></tr>`);
+
+function pairCard(title,sub,note,a,an,b,bn){
+  return `<div class="pair"><h4>${title} <span class="zh" style="color:var(--txt3);font-weight:400">${sub}</span></h4><div class="note">${note}</div>
+   ${[[a,an],[b,bn]].map(([d,nm])=>`<div class="pairrow">
+     <div class="l" style="display:flex;flex-direction:column;gap:2px"><span>${nm.code} <span style="font-family:'IBM Plex Sans';font-weight:400;font-size:11px;color:var(--txt2)">${(NAME[nm.code]||['',''])[0]}</span></span><span class="t" style="margin:0">${nm.zh}</span></div>
+     <div class="r">
+       <div><div class="v">${M2(d.rev)}</div><small>YTD rev</small></div>
+       <div><div class="v" style="color:${d.yoy>=0?'var(--green)':'var(--red)'}">${sign(d.yoy)}</div><small>YoY</small></div>
+       <div><div class="v">${d.gm}%</div><small>Book GM 帳面</small></div>
+     </div></div>`).join('')}</div>`;
+}
+document.getElementById('m-pairs').innerHTML=
+ pairCard('KS ↔ ZX','配對門市','KS was accepted to secure the high-performing ZX location — never assess KS standalone. <span class="zh" style="color:var(--txt3)">KS（高雄SOGO）是換取 ZX（忠孝SOGO）的綁定成本，不可單獨評估。</span>',
+   M.pairs.KS_ZX.KS,{code:'KS',zh:'高雄SOGO'},M.pairs.KS_ZX.ZX,{code:'ZX',zh:'忠孝SOGO'})
+ +pairCard('TMMK ↔ NH','配對門市','TMMK was accepted in exchange for NH — evaluate the pair together. <span class="zh" style="color:var(--txt3)">TMMK（天母三越）是換取 NH（南西新光）的綁定成本，兩者須一起評估。</span>',
+   M.pairs.TMMK_NH.TMMK,{code:'TMMK',zh:'天母三越'},M.pairs.TMMK_NH.NH,{code:'NH',zh:'南西新光'});
+
+new Chart(document.getElementById('m-trend'),{type:'bar',
+  data:{labels:['1','2','3','4','5','6','7','8','9','10','11','12'],datasets:[
+    {label:'2026',data:M.trend.r26.map(v=>v||null),backgroundColor:'#C9A24B',borderRadius:3,barPercentage:.7,categoryPercentage:.8},
+    {label:'2025',data:M.trend.r25,backgroundColor:'rgba(100,109,133,.45)',borderRadius:3,barPercentage:.7,categoryPercentage:.8}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': NT$ '+(c.parsed.y?fmt(c.parsed.y):'—')}}},
+    scales:{x:{grid:{display:false},ticks:{color:'#646D85',font:{family:'IBM Plex Mono',size:11}}},
+      y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#646D85',font:{family:'IBM Plex Mono',size:10},callback:v=>(v/1e6)+'M'}}}}});
+
+/* ---------- WEEKLY ---------- */
+document.getElementById('w-hero').innerHTML=`
+ <div class="kpi"><div class="edge" style="background:var(--gold)"></div>
+   <div class="lab">YTD-thru-week<span class="zh">累計至當週</span></div>
+   <div class="big">NT$ ${fmt(W.total)}</div>
+   <div class="deltas"><div class="dl">YoY<span class="v up">+${(W.yoy-100).toFixed(1)}%</span></div>
+   <div class="dl zh">截至 06-21</div></div></div>
+ <div class="kpi"><div class="edge" style="background:var(--green)"></div>
+   <div class="lab">Since prior snap<span class="zh">較上一快照</span></div>
+   <div class="big">+${M2(W.total-W.prevSnap)}</div>
+   <div class="deltas"><div class="dl zh">06-07 → 06-21 累計增額</div></div></div>
+ <div class="kpi"><div class="edge" style="background:var(--gold)"></div>
+   <div class="lab">GIFT 5000↑<span class="zh">最大級距</span></div>
+   <div class="big">60.5%</div>
+   <div class="deltas"><div class="dl">vs LY comp<span class="v up">+3.9pp</span></div>
+   <div class="dl">YoY<span class="v up">+24.8%</span></div></div></div>
+ <div class="kpi"><div class="edge" style="background:var(--red)"></div>
+   <div class="lab">GIFT 900↓<span class="zh">下滑級距</span></div>
+   <div class="big">11.7%</div>
+   <div class="deltas"><div class="dl">vs LY comp<span class="v down">-4.3pp</span></div>
+   <div class="dl">YoY<span class="v down">-14.5%</span></div></div></div>`;
+
+const maxComp=Math.max(...WCOMP.map(c=>c.cur));
+document.getElementById('w-comp').innerHTML=WCOMP.map(c=>{
+  const col=c.cat==='GIFT_5000_UP'?'var(--gold)':c.cat==='FB'?'var(--blue)':'#4a5573';
+  return `<div class="comprow">
+   <div class="cat">${c.cat.replace(/_/g,' ')}<span class="zh">${c.zh}</span></div>
+   <div class="bar"><div class="fill" style="width:${c.cur/maxComp*100}%;background:${col}"></div>
+     <div class="lbl">${c.cur}% <span style="color:var(--txt3)">/ ${c.prev}%</span></div></div>
+   <div class="shift ${cls(c.cur-c.prev)}">${(c.cur-c.prev>=0?'+':'')+(c.cur-c.prev).toFixed(1)}pp</div>
+   <div class="yoybadge ${cls(c.yoy-100)}">${sign(c.yoy-100)}</div>
+  </div>`;
+}).join('');
+
+const alerts=WCOMP.map(c=>({...c,d:c.cur-c.prev})).filter(c=>Math.abs(c.d)>=1).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d));
+document.getElementById('w-alerts').innerHTML=alerts.map(c=>{
+  const dir=c.d>=0?'var(--green)':'var(--red)';
+  const msg=c.d>=0?'mix ↑ 佔比升':'mix ↓ 佔比降';
+  return `<div class="alert"><span class="adot" style="background:${dir}"></span>
+   <span style="flex:1"><b>${c.cat.replace(/_/g,' ')}</b> <span class="zh" style="color:var(--txt3)">${c.zh}</span></span>
+   <span class="zh" style="color:var(--txt3);font-size:11px">${msg}</span>
+   <span class="num" style="color:${dir};font-weight:600">${(c.d>=0?'+':'')+c.d.toFixed(1)}pp</span></div>`;
+}).join('');
+
+function moverRow(m,up){
+  const col=m.yoy>=0?'var(--green)':'var(--red)';
+  return `<div class="alert"><span class="adot" style="background:${up?'var(--green)':'var(--red)'}"></span>
+   <span style="flex:1">${unit(m.code)}</span>
+   <span class="num" style="color:var(--txt3);font-size:11px">${M2(m.rev)}</span>
+   <span class="num" style="color:${col};font-weight:600;min-width:64px;text-align:right">${sign(m.yoy)}</span></div>`;
+}
+document.getElementById('w-movers').innerHTML=
+ `<div style="font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--green);padding:6px 18px 2px">Top 5 ▲</div>`+
+ `<div class="alertbox" style="border:0">`+WMOV.top.map(m=>moverRow(m,true)).join('')+`</div>`+
+ `<div style="font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--red);padding:10px 18px 2px">Bottom 5 ▼</div>`+
+ `<div class="alertbox" style="border:0">`+WMOV.bottom.map(m=>moverRow(m,false)).join('')+`</div>`;
+
+document.getElementById('w-cafe').innerHTML=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:13px">`+
+ WCAFE.map(c=>`<div style="background:var(--panel2);border:1px solid var(--line);border-radius:var(--r);padding:14px 15px">
+   <div style="display:flex;justify-content:space-between;align-items:baseline">
+     <span class="code" style="font-size:13px">${c.code}</span>
+     <span style="font-size:10px;color:var(--txt2)">${(NAME[c.code]||['',''])[0]} <span class="zh" style="color:var(--txt3)">${c.zh}</span></span></div>
+   <div style="font-family:'IBM Plex Mono';font-size:20px;font-weight:600;margin-top:10px">${M2(c.fb)}</div>
+   <div style="font-size:10px;color:var(--txt3)">F&B revenue <span class="zh">餐飲營收</span></div>
+   <div style="display:flex;justify-content:space-between;margin-top:11px;padding-top:10px;border-top:1px solid var(--line);font-size:11px">
+     <span style="color:var(--txt3)">of store <b class="num" style="color:var(--txt2)">${c.comp}%</b> <span class="zh">佔店</span></span>
+     <span class="num" style="color:${c.yoy==null?'var(--txt3)':c.yoy>=0?'var(--green)':'var(--red)'}">${c.yoy==null?'—':sign(c.yoy)}</span>
+   </div></div>`).join('')+`</div>`;
+
+/* ---------- DAILY (real) ---------- */
+
+const dc=DD.company;
+function dStat(r){ if(r.area==='Channel'&&r.sales===0)return 'grey'; if(r.budpct==null)return 'grey'; return r.budpct>=100?'g':r.budpct>=85?'a':'r'; }
+const DSC={g:'var(--green)',a:'var(--amber)',r:'var(--red)',grey:'#3a4258'};
+const dStores=DD.rows.filter(r=>r.area!=='Channel');
+const dcnt={g:0,a:0,r:0};dStores.forEach(r=>{const s=dStat(r);if(dcnt[s]!=null)dcnt[s]++;});
+
+document.getElementById('d-hero').innerHTML=`
+ <div class="kpi"><div class="edge" style="background:${edge(dc.budpct-100)}"></div>
+   <div class="lab">Sales today<span class="zh">本日營收</span></div>
+   <div class="big">NT$ ${fmt(dc.sales)}</div>
+   <div class="deltas"><div class="dl">Budget ach.<span class="v ${cls(dc.budpct-100)}">${dc.budpct}%</span></div>
+   <div class="dl">vs LY<span class="v ${cls(dc.yoy)}">${sign(dc.yoy)}</span></div></div></div>
+ <div class="kpi"><div class="edge" style="background:${edge(dc.mtdbud-100)}"></div>
+   <div class="lab">Month to date<span class="zh">本月累計</span></div>
+   <div class="big">NT$ ${fmt(dc.mtd)}</div>
+   <div class="deltas"><div class="dl">Budget ach.<span class="v ${cls(dc.mtdbud-100)}">${dc.mtdbud}%</span></div>
+   <div class="dl">MTD YoY<span class="v ${cls(dc.mtdyoy)}">${sign(dc.mtdyoy)}</span></div></div></div>
+ <div class="kpi"><div class="lab">Store status<span class="zh">門市燈號</span></div>
+   <div style="display:flex;gap:8px;margin-top:14px">
+     <div style="flex:1;text-align:center;background:var(--green-bg);color:var(--green);border-radius:6px;padding:8px 0;font-family:'IBM Plex Mono';font-weight:600">${dcnt.g}<div style="font-size:9px;font-family:'IBM Plex Sans'">On 達標</div></div>
+     <div style="flex:1;text-align:center;background:var(--amber-bg);color:var(--amber);border-radius:6px;padding:8px 0;font-family:'IBM Plex Mono';font-weight:600">${dcnt.a}<div style="font-size:9px;font-family:'IBM Plex Sans'">Watch 觀察</div></div>
+     <div style="flex:1;text-align:center;background:var(--red-bg);color:var(--red);border-radius:6px;padding:8px 0;font-family:'IBM Plex Mono';font-weight:600">${dcnt.r}<div style="font-size:9px;font-family:'IBM Plex Sans'">Below 落後</div></div>
+   </div>
+   <div class="deltas"><div class="dl">${dStores.length} stores · low Sunday achievement is normal <span class="zh">門市 · 週日偏低屬常態</span></div></div></div>
+ <div class="kpi"><div class="edge" style="background:var(--blue)"></div>
+   <div class="lab">Units<span class="zh">營業單位</span></div>
+   <div class="big">${DD.rows.length}</div>
+   <div class="deltas"><div class="dl">Stores<span class="v flat">${dStores.length}</span></div>
+   <div class="dl">Channels<span class="v flat">${DD.rows.filter(r=>r.area==='Channel').length}</span></div></div></div>`;
+
+const dtb=document.querySelector('#d-tbl tbody');
+const DG=[['Taipei','Taipei area','台北區'],['NonTaipei','Non-Taipei','非台北區'],['Channel','Non-store channels','非店通路']];
+DG.forEach(([k,en,zh])=>{
+  const set=DD.rows.filter(r=>r.area===k).sort((a,b)=>b.sales-a.sales||b.mtd-a.mtd);
+  if(!set.length)return;
+  dtb.insertAdjacentHTML('beforeend',`<tr class="grouprow"><td colspan="7">${en} <span class="zh">${zh}</span></td></tr>`);
+  set.forEach(r=>{
+    const s=dStat(r);
+    const dayCell=r.area==='Channel'&&r.sales===0?'<span style="color:var(--txt3)">—</span>':fmt(r.sales);
+    const budCell=r.area==='Channel'&&r.sales===0?'<span style="color:var(--txt3)">—</span>':`<span class="pct ${cls(r.budpct-100)}">${r.budpct}%</span>`;
+    const yoyCell=r.yoy==null?'<span style="color:var(--txt3)">—</span>':`<span class="pct ${cls(r.yoy)}">${sign(r.yoy)}</span>`;
+    dtb.insertAdjacentHTML('beforeend',`<tr>
+      <td class="store">${unit(r.code)}</td>
+      <td class="num">${dayCell}</td><td>${budCell}</td><td>${yoyCell}</td>
+      <td class="num" style="color:var(--txt2)">${M2(r.mtd)}</td>
+      <td class="pct ${cls(r.mtdbud-100)}">${r.mtdbud==null?'—':r.mtdbud+'%'}</td>
+      <td style="text-align:center"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${DSC[s]}"></span></td></tr>`);
+  });
+});
+dtb.insertAdjacentHTML('beforeend',`<tr class="grand">
+  <td class="store">COMPANY 全公司</td>
+  <td class="num">${fmt(dc.sales)}</td>
+  <td class="pct ${cls(dc.budpct-100)}">${dc.budpct}%</td>
+  <td class="pct ${cls(dc.yoy)}">${sign(dc.yoy)}</td>
+  <td class="num">${M2(dc.mtd)}</td>
+  <td class="pct ${cls(dc.mtdbud-100)}">${dc.mtdbud}%</td><td></td></tr>`);
+
+new Chart(document.getElementById('d-trend'),{type:'line',
+  data:{labels:DD.trend.d,datasets:[
+   {label:'Actual',data:DD.trend.sales,borderColor:'#C9A24B',backgroundColor:'rgba(201,162,75,.08)',borderWidth:2,fill:true,tension:.3,pointRadius:0,pointHoverRadius:4},
+   {label:'Budget',data:DD.trend.bud,borderColor:'#646D85',borderWidth:1.5,borderDash:[5,4],fill:false,tension:.3,pointRadius:0},
+   {label:'LY',data:DD.trend.ly,borderColor:'#5B9DFF',borderWidth:1.5,fill:false,tension:.3,pointRadius:0}]},
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+   plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': NT$ '+fmt(c.parsed.y)}}},
+   scales:{x:{grid:{display:false},ticks:{color:'#646D85',font:{family:'IBM Plex Mono',size:10}}},
+     y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#646D85',font:{family:'IBM Plex Mono',size:10},callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
+
+/* ---------- TABS ---------- */
+const META={daily:'2026-06-28',weekly:'06-21 snapshot',monthly:'2026-05'};
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on');document.getElementById(t.dataset.v).classList.add('on');
+  document.getElementById('meta-date').textContent=META[t.dataset.v];
+}));
+</script>
+</body>
+</html>
